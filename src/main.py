@@ -1,6 +1,6 @@
 import click
-import simulus
 from ttictoc import TicToc
+import src.schedulus as schedulus
 
 
 def command_required_option_from_option(master, requires):
@@ -22,15 +22,16 @@ def cli(ctx):
         click.echo(click.style('Hello, please invoke a command', fg = 'bright_red'))
 
 
-def print_message(sim):
-    print("Hello world at time", sim.now)
-    sim.sched(print_message, sim, offset=10)
+# def print_message(sim):
+#     print("Hello world at time", sim.now)
+#     sim.sched(print_message, sim, offset=10)
 
 
-@cli.command()
-def validate():
-    click.secho('Starting Simulation', fg = 'bright_red')
+@cli.command(cls=command_required_option_from_option('type', ['path', 'backfill']))
+@click.argument('type', type=click.Choice(['fcfs']))
+@click.option('--path', '-p', type=click.Path(exists=True, dir_okay=True))
+@click.option('--backfill', '-b', type=click.Choice(['none', 'easy']))
+def run(type, path, backfill):
+    click.secho('Starting Schedulus', fg = 'bright_red')
 
-    sim = simulus.simulator()
-    sim.sched(print_message, sim, until=10)
-    sim.run(100)
+    schedulus.run(type=type, backfill=backfill, path=path)
