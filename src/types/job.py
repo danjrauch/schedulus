@@ -1,9 +1,9 @@
 __metaclass__ = type
 
 class Job:
-    def __init__(self, id, submit, wait, run, used_proc, used_ave_cpu, used_mem, req_proc, req_time, req_mem, status, user_id, group_id, num_exe, num_queue, num_part, num_pre, think_time, start=-1, end=-1, score=0, state=0, happy=-1, est_start=-1):
+    def __init__(self, id, submit_time, wait, run, used_proc, used_ave_cpu, used_mem, req_proc, req_time, req_mem, status, user_id, group_id, num_exe, num_queue, num_part, num_pre, think_time, start_time=-1, end_time=-1, score=0, state=0, happy=-1, est_start=-1):
         self.id           = id
-        self.submit       = submit
+        self.submit_time  = submit_time
         self.wait         = wait
         self.run          = run
         self.used_proc    = used_proc
@@ -20,8 +20,8 @@ class Job:
         self.num_part     = num_part
         self.num_pre      = num_pre
         self.think_time   = think_time
-        self.start        = start
-        self.end          = end
+        self.start_time   = start_time
+        self.end_time     = end_time
         self.score        = score
         self.state        = state
         self.happy        = happy
@@ -36,7 +36,7 @@ class Job:
     def start(self, time):
         self.state = 2
         self.start = time
-        self.wait = time - self.submit
+        self.wait = time - self.submit_time
         self.end = time + self.run
         return 0
 

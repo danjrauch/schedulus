@@ -22,11 +22,6 @@ def cli(ctx):
         click.echo(click.style('Hello, please invoke a command', fg = 'bright_red'))
 
 
-# def print_message(sim):
-#     print("Hello world at time", sim.now)
-#     sim.sched(print_message, sim, offset=10)
-
-
 @cli.command(cls=command_required_option_from_option('type', ['path', 'backfill']))
 @click.argument('type', type=click.Choice(['fcfs']))
 @click.option('--path', '-p', type=click.Path(exists=True, dir_okay=True))
@@ -34,4 +29,6 @@ def cli(ctx):
 def run(type, path, backfill):
     click.secho('Starting Schedulus', fg = 'bright_red')
 
-    schedulus.run(type=type, backfill=backfill, path=path)
+    sched = schedulus.Schedulus(100)
+    sched.read_jobs(path)
+    sched.run(type, backfill)

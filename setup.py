@@ -17,7 +17,8 @@ setuptools.setup(
         'Click',
         'numpy',
         'ttictoc',
-        'simulus'
+        'simulus',
+        'loguru'
     ],
     entry_points='''
         [console_scripts]
