@@ -17,7 +17,7 @@ def command_required_option_from_option(master, requires):
 @click.group(invoke_without_command=True)
 @click.pass_context
 def cli(ctx):
-    """Main Command."""
+    """Main command."""
     if ctx.invoked_subcommand is None:
         click.echo(click.style('Hello, please invoke a command', fg = 'bright_red'))
 
@@ -27,8 +27,7 @@ def cli(ctx):
 @click.option('--path', '-p', type=click.Path(exists=True, dir_okay=True))
 @click.option('--backfill', '-b', type=click.Choice(['none', 'easy']))
 def run(type, path, backfill):
-    click.secho('Starting Schedulus', fg = 'bright_red')
-
-    sched = schedulus.Schedulus(100)
+    """Run the scheduler."""
+    sched = schedulus.Schedulus(400)
     sched.read_jobs(path)
     sched.run(type, backfill)

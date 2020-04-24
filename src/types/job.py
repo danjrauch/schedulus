@@ -35,7 +35,7 @@ class Job:
 
     def start(self, time):
         self.state = 2
-        self.start = time
+        self.start_time = time
         self.wait = time - self.submit_time
         self.end = time + self.run
         return 0
