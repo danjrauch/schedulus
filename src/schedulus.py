@@ -5,23 +5,25 @@ import sys
 from loguru import logger
 from datetime import datetime
 from functools import cmp_to_key
+from statistics import mean
 from src.types.job import *
 from src.types.cluster import *
 
 __metaclass__ = type
 
 class Schedulus:
-    def __init__(self, num_proc):
+    def __init__(self, num_proc, backfill):
         self.jobs     = {}
         self.schedule = []
         self.waiting  = []
         self.running  = []
+        self.backfill = backfill
         self.cluster  = Cluster(num_proc, num_proc, num_proc)
         self.sim      = simulus.simulator()
 
 
     def __log(self, submitted, started, finished):
-        if len(self.jobs) <= 10 and (len(self.schedule) <= 1 and len(self.waiting) <= 1 and len(self.running) <= 1):
+        if len(self.jobs) <= 10:
             logger.debug('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
             logger.debug('Time: ' + str(self.sim.now))
             logger.debug('------------------------------')
@@ -40,48 +42,55 @@ class Schedulus:
             logger.debug('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n')
 
 
-    def __process_submit(self, job_id, backfill):
+    def __process_submit(self, job_id):
+        submitted = []
+        started = []
+
         job = self.jobs[job_id]
 
         job.submit()
         self.waiting.append(job_id)
+        self.schedule.append(job_id)
+        submitted.append(job_id)
 
-        if self.cluster.allocate(job.req_proc):
-            self.__initiate_job(job_id)
-            self.__log([job_id], [job_id], [])
-        elif backfill is 'easy':
-            self.__backfill(job_id, backfill)
-        else:
-            self.schedule.append(job_id)
-            self.__log([job_id], [], [])
+        s_job = self.jobs[self.schedule[0]]
 
-        # if self.cluster.allocate(job.req_proc):
-        #     job.start(self.sim.now)
-        #     self.sim.sched(self.__process_end, job, until=self.sim.now+job.run)
-        #     self.waiting.remove(job.id)
-        #     self.running.append(job.id)
-        #     self.__log([job.id], [job.id], [])
-        # else:
-        #     self.schedule.append(job)
-        #     self.__log([job.id], [], [])
+        if self.cluster.allocate(s_job.req_proc):
+            self.__initiate_job(s_job.id)
+            started.append(s_job.id)
+        elif self.backfill != 'none':
+            started.extend(self.__backfill(s_job.id))
+
+        self.__log(submitted, started, [])
 
 
     def __process_end(self, job_id):
+        started = []
+        finished = []
+
         job = self.jobs[job_id]
 
         job.finish(self.sim.now)
         self.cluster.release(job.req_proc)
         self.running.remove(job_id)
-        started = []
+        finished.append(job_id)
+
+        do_backfill = self.backfill != 'none' and len(self.schedule) > 0
+
         while self.schedule and self.cluster.allocate(self.jobs[self.schedule[0]].req_proc):
-            next_job_id = self.schedule.pop(0)
+            next_job_id = self.schedule[0]
             self.__initiate_job(next_job_id)
             started.append(next_job_id)
-        self.__log([], started, [job_id])
+            do_backfill = False
+
+        if do_backfill:
+            started.extend(self.__backfill(self.jobs[self.schedule[0]].id))
+
+        self.__log([], started, finished)
 
 
     # https://www.cse.huji.ac.il/~perf/ex11.html
-    def __backfill(self, job_id, backfill):
+    def __backfill(self, job_id):
         job = self.jobs[job_id]
 
         proc_pool = self.cluster.idle
@@ -105,7 +114,7 @@ class Schedulus:
 
         started = []
 
-        for w_job_id in self.waiting.copy():
+        for w_job_id in self.waiting[1:].copy():
             # Condition 1: It uses no more than the currently available processors, and is expected to terminate by the shadow time.
             if self.sim.now + self.jobs[w_job_id].req_time < shadow_time and self.cluster.allocate(self.jobs[w_job_id].req_proc):
                 self.__initiate_job(w_job_id)
@@ -116,8 +125,7 @@ class Schedulus:
                 extra_procs -= self.jobs[w_job_id].req_proc
                 started.append(w_job_id)
 
-        self.schedule.append(job_id)
-        self.__log([job_id], started, [])
+        return started
 
 
     def __initiate_job(self, job_id):
@@ -126,8 +134,7 @@ class Schedulus:
         job.start(self.sim.now)
         self.sim.sched(self.__process_end, job_id, offset=job.run)
         self.waiting.remove(job_id)
-        if job_id in self.schedule:
-            self.schedule.remove(job_id)
+        self.schedule.remove(job_id)
         self.running.append(job_id)
 
 
@@ -165,15 +172,22 @@ class Schedulus:
                                                         happy=-1,\
                                                         est_start=-1)
 
-    def run(self, type, backfill):
+
+    def run(self, type):
         logger.remove()
-        logger.add(sys.stdout, format='{message}', level='DEBUG')
+        logger.add('data/output/file_{time}.log', format='{message}', level='DEBUG')
 
         for job in self.jobs.values():
-            self.sim.sched(self.__process_submit, job.id, backfill, until=job.submit_time)
+            self.sim.sched(self.__process_submit, job.id, until=job.submit_time)
             # self.sim.process(self.__process_submit, job, until=job.submit_time, prio=job.id)
 
         self.sim.run()
 
+        bounded_slowdowns = []
+
         for job in self.jobs.values():
-            print('Bounded Slowdown for job ID : ' + str(job.id) + ' = ' + str(max((job.wait+(job.end-job.start_time)) / max((job.end-job.start_time), 10), 1)))
+            bounded_slowdown = max((job.wait+(job.end-job.start_time)) / max((job.end-job.start_time), 10), 1)
+            # logger.debug('Bounded Slowdown for job ID : ' + str(job.id) + ' = ' + str(bounded_slowdown))
+            bounded_slowdowns.append(bounded_slowdown)
+
+        logger.debug('Average bounded slowdown = ' + str(mean(bounded_slowdowns)))

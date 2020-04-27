@@ -26,8 +26,9 @@ def cli(ctx):
 @click.argument('type', type=click.Choice(['fcfs']))
 @click.option('--path', '-p', type=click.Path(exists=True, dir_okay=True))
 @click.option('--backfill', '-b', type=click.Choice(['none', 'easy']))
-def run(type, path, backfill):
+@click.option('--nodes', '-n', required=True, type=int)
+def run(type, path, backfill, nodes):
     """Run the scheduler."""
-    sched = schedulus.Schedulus(400)
+    sched = schedulus.Schedulus(nodes, backfill)
     sched.read_jobs(path)
-    sched.run(type, backfill)
+    sched.run(type)
