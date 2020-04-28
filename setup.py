@@ -11,13 +11,17 @@ setuptools.setup(
     description="HPC Scheduling Simulator",
     long_description=long_description,
     long_description_content_type="text/markdown",
-    url="https://github.com/pypa/sampleproject", # Change
+    url="https://github.com/danjrauch/schedulus",
     packages=setuptools.find_packages(),
     install_requires=[
         'Click',
         'numpy',
         'ttictoc',
+        'plotly',
+        'pandas',
         'simulus',
+        'psutil',
+        'requests',
         'loguru'
     ],
     entry_points='''

@@ -12,20 +12,29 @@ from src.types.cluster import *
 __metaclass__ = type
 
 class Schedulus:
-    def __init__(self, num_proc, backfill):
+    def __init__(self, num_proc, backfill, path):
         self.jobs     = {}
         self.schedule = []
         self.waiting  = []
         self.running  = []
         self.backfill = backfill
+        self.path     = path
+        self.stats    = {}
         self.cluster  = Cluster(num_proc, num_proc, num_proc)
         self.sim      = simulus.simulator()
 
 
     def __log(self, submitted, started, finished):
+        current_utilization = (self.cluster.total-self.cluster.idle) / self.cluster.total
+        if self.sim.now not in self.stats:
+            self.stats[self.sim.now] = {'utilization': current_utilization,
+                                        'num_running_jobs': len(self.running)}
+        elif current_utilization > self.stats[self.sim.now]['utilization']:
+            self.stats[self.sim.now]['utilization'] = current_utilization
         if len(self.jobs) <= 10:
             logger.debug('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
             logger.debug('Time: ' + str(self.sim.now))
+            logger.debug('Utilization: ' + str(current_utilization))
             logger.debug('------------------------------')
             logger.debug('Wait: ' + str(self.waiting))
             logger.debug('Run: ' + str(self.running))
@@ -48,20 +57,21 @@ class Schedulus:
 
         job = self.jobs[job_id]
 
-        job.submit()
-        self.waiting.append(job_id)
-        self.schedule.append(job_id)
-        submitted.append(job_id)
+        if job.req_proc <= self.cluster.total:
+            job.submit()
+            self.waiting.append(job_id)
+            self.schedule.append(job_id)
+            submitted.append(job_id)
 
-        s_job = self.jobs[self.schedule[0]]
+            s_job = self.jobs[self.schedule[0]]
 
-        if self.cluster.allocate(s_job.req_proc):
-            self.__initiate_job(s_job.id)
-            started.append(s_job.id)
-        elif self.backfill != 'none':
-            started.extend(self.__backfill(s_job.id))
+            if self.cluster.allocate(s_job.req_proc):
+                self.__initiate_job(s_job.id)
+                started.append(s_job.id)
+            elif self.backfill != 'none':
+                started.extend(self.__backfill(s_job.id))
 
-        self.__log(submitted, started, [])
+            self.__log(submitted, started, [])
 
 
     def __process_end(self, job_id):
@@ -177,6 +187,11 @@ class Schedulus:
         logger.remove()
         logger.add('data/output/file_{time}.log', format='{message}', level='DEBUG')
 
+        logger.debug('OUTPUT FILE')
+        logger.debug(f'\nPath: {self.path}')
+        logger.debug(f'Type: {type}')
+        logger.debug(f'Backfill: {self.backfill}\n')
+
         for job in self.jobs.values():
             self.sim.sched(self.__process_submit, job.id, until=job.submit_time)
             # self.sim.process(self.__process_submit, job, until=job.submit_time, prio=job.id)
@@ -184,10 +199,18 @@ class Schedulus:
         self.sim.run()
 
         bounded_slowdowns = []
+        tot_wait_time = 0
+        tot_num_running_jobs = 0
 
         for job in self.jobs.values():
-            bounded_slowdown = max((job.wait+(job.end-job.start_time)) / max((job.end-job.start_time), 10), 1)
-            # logger.debug('Bounded Slowdown for job ID : ' + str(job.id) + ' = ' + str(bounded_slowdown))
-            bounded_slowdowns.append(bounded_slowdown)
+            if hasattr(job, 'end'):
+                bounded_slowdown = max((job.wait+(job.end-job.start_time)) / max((job.end-job.start_time), 10), 1)
+                bounded_slowdowns.append(bounded_slowdown)
+            tot_wait_time += job.wait
+
+        for stats in self.stats.values():
+            tot_num_running_jobs += stats['num_running_jobs']
 
         logger.debug('Average bounded slowdown = ' + str(mean(bounded_slowdowns)))
+        logger.debug('Average wait time = ' + str(tot_wait_time/len(self.jobs)))
+        logger.debug('Average number of running jobs = ' + str(tot_num_running_jobs/len(self.stats)))

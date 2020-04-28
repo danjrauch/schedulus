@@ -10,6 +10,7 @@ Schedulus was originally developed by Dan Rauch and Nicholas Velcich (version 0.
 
 ```sh
 cd schedulus
+sudo npm install -g electron@1.8.4 orca --unsafe-perm=true --allow-root
 virtualenv -p python3 venv
 source ./venv/bin/activate
 pip3 install --editable .
