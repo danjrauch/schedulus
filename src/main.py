@@ -29,8 +29,8 @@ def cli(ctx):
 
 @cli.command(cls=command_required_option_from_option('type', ['path', 'backfill']))
 @click.argument('type', type=click.Choice(['fcfs']))
-@click.option('--path', '-p', type=click.Path(exists=True, dir_okay=True))
-@click.option('--backfill', '-b', type=click.Choice(['none', 'easy', 'all']))
+@click.option('--path', '-p', required=True, type=click.Path(exists=True, dir_okay=True))
+@click.option('--backfill', '-b', required=True, type=click.Choice(['none', 'easy', 'all']))
 @click.option('--nodes', '-n', required=True, type=int)
 def run(type, path, backfill, nodes):
     """Run the scheduler."""
@@ -47,7 +47,7 @@ def run(type, path, backfill, nodes):
         schedulers[-1].run(type)
 
     # plot_stat(schedulers, 'num_running_jobs')
-    plot_job_wait(schedulers)
+    # plot_job_wait(schedulers)
 
     # for scheduler in schedulers:
     #     tot = 0

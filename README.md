@@ -19,5 +19,13 @@ pip3 install --editable .
 #### Run the Program
 
 ```sh
-schedulus run fcfs -p data/input/test.swf -b none
+schedulus run fcfs -p data/input/test.swf -b none -n 100
+```
+
+Output files will appear in data/output/
+
+To see all options for command line arguments,
+
+```sh
+schedulus run fcfs --help
 ```

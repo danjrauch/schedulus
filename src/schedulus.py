@@ -31,7 +31,7 @@ class Schedulus:
                                         'num_running_jobs': len(self.running)}
         elif current_utilization > self.stats[self.sim.now]['utilization']:
             self.stats[self.sim.now]['utilization'] = current_utilization
-        if len(self.jobs) <= 10:
+        if len(self.jobs) <= 100:
             logger.debug('<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<')
             logger.debug('Time: ' + str(self.sim.now))
             logger.debug('Utilization: ' + str(current_utilization))
